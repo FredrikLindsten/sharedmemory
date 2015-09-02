@@ -1,5 +1,4 @@
 #pragma once
-#include "server.h"
 #include <Windows.h>
 
 struct MessageHeader{
@@ -11,6 +10,7 @@ private:
 	bool ownsMemory;
 	HANDLE hFileMap;
 	void* mData;
+	size_t* mControl;
 	int messageCount, clientCount;
 
 public:

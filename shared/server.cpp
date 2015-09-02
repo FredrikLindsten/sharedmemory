@@ -3,7 +3,7 @@
 #include <Windows.h>
 
 Server::Server(){
-	unsigned int mSize = 1 << 10;
+	unsigned int mSize = 1 << 20;
 
 	hFileMap = CreateFileMapping(
 		INVALID_HANDLE_VALUE,
@@ -13,12 +13,12 @@ Server::Server(){
 		mSize,
 		(LPCWSTR) "shared");
 
-	if (GetLastError() == ERROR_ALREADY_EXISTS)
-		ownsMemory = false;
-	else
-		ownsMemory = true;
 
-	mData = MapViewOfFile(hFileMap, FILE_MAP_ALL_ACCESS, 0, 0, 0);
+
+	mControl = (size_t*)MapViewOfFile(hFileMap, FILE_MAP_ALL_ACCESS, 0, 0, sizeof(size_t)* 101);
+	mData = (char*)MapViewOfFile(hFileMap, FILE_MAP_ALL_ACCESS, 0, sizeof(size_t)* 101, 0);
+
+	*mControl = 0;
 
 	MainLoop();
 }

@@ -1,4 +1,5 @@
 #include <Windows.h>
+#include <iostream>
 #include "server.h"
 #include "client.h"
 
