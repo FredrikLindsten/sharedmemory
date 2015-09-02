@@ -31,8 +31,8 @@ Client::Client(){
 
 
 	bool foundTail=false;
-	Mutex mutex();
-	mutex.Lock();
+	Mutex* mutex = new Mutex();
+	mutex->Lock();
 	while (foundTail = false){
 		mControl++;
 		if (*mControl == 1){
@@ -40,7 +40,7 @@ Client::Client(){
 			*mControl = 0;
 		}
 	}
-	mutex.Unlock();
+	mutex->Unlock();
 	
 }
 

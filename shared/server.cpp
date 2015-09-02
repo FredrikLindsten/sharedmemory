@@ -27,15 +27,15 @@ void Server::MainLoop(){
 	bool run = true;
 
 	//createdata
-	messageCount++;
-	void* data;
-	int size;
-
-
-
-	while (run == true){
-		run = CreateMessage(data, size);
-	}
+//	messageCount++;
+//	void* data;
+//	int size;
+//
+//
+//
+//	while (run == true){
+//		run = CreateMessage(data, size);
+//	}
 
 	return;
 }
