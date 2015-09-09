@@ -9,14 +9,22 @@ class Server{
 private:
 	bool ownsMemory;
 	HANDLE hFileMap;
-	void* mData;
+	char* mData;
 	size_t* mControl;
-	int messageCount, clientCount;
+	int msgCount, msgMax, clientCount;
 
+	int totalMem;
+
+	bool msgRandSize;
+	int msgSize;
+
+	int sleepTime;
 public:
-	Server();
+	Server(int delay, int memorySize, int numMessages, bool random, int msgSizeIn);
 	~Server();
 	
 	void MainLoop();
-	bool CreateMessage(void* data, int size);
+	bool WriteMessage(char* data, int size);
+	void gen_random(char *s, const int len);
+	int FreeMemory();
 };

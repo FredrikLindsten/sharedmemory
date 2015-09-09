@@ -3,12 +3,11 @@ class Client{
 private:
 	HANDLE hFileMap;
 	char* mData;
-	size_t* tail;
-	size_t* head;
+	size_t* mControl;
 	bool ownsMemory;
 	int clientId;
 public:
-	Client();
+	Client(int delay, int memorySize, int numMessages, bool random, int msgSize);
 	~Client();
 
 	void MainLoop();

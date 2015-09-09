@@ -4,38 +4,40 @@
 #include "mutex.h"
 #include "client.h"
 
-Client::Client(){
+Client::Client(int delay, int memorySize, int numMessages, bool random, int msgSize){
 	Mutex* mutex = new Mutex();
 	mutex->Lock();
-	unsigned int mSize = 1 << 20;
 	hFileMap = CreateFileMapping(
 		INVALID_HANDLE_VALUE,
 		NULL,
 		PAGE_READWRITE,
 		(DWORD)0,
-		mSize,
+		memorySize,
 		(LPCWSTR) "shared");
 
-	head = (size_t*)MapViewOfFile(hFileMap, FILE_MAP_ALL_ACCESS, 0, 0, sizeof(size_t)* 101);
-	tail = head;
-	mData = (char*)MapViewOfFile(hFileMap, FILE_MAP_ALL_ACCESS, 0, sizeof(size_t) * 101, 0);
+	size_t* help;
+	mData = (char*)MapViewOfFile(hFileMap, FILE_MAP_ALL_ACCESS, 0, 0, 0);
+	help = (size_t*)mData;
+	mControl = help;
+	help += 101;
+	mData = (char*)help;
 
 	if (GetLastError() == ERROR_ALREADY_EXISTS)
 		ownsMemory = false;
 	else{
 		ownsMemory = true;
-		std::fill(head, head + 101, 1);
+		std::fill(mControl, mControl + 101, 1);
 	}
 
 	bool foundTail=false;
 	clientId = 0;
-	while (foundTail = false){
-		tail++;
+	while (foundTail == false){
+		mControl++;
 		clientId++;
-		if (*tail == 1){
+		if (*mControl == 1){
 			foundTail = true;
-			*tail = 0;
-			mutex->Unlock();
+			*mControl = 0;
+			mutex->~Mutex();
 		}
 	}
 	
@@ -43,11 +45,13 @@ Client::Client(){
 }
 
 void Client::MainLoop(){
-	char* data = "sample data";
+	int* header = (int*)mData;
+	std::cout << header[0] << " " << header[1] << " ";
 	while(1){
-		if (*tail!=*head)
-			//read
-		std::cout << data << std::endl;
+
+		for (auto i = 8; i < header[1]; i++)
+			std::cout << mData[i];
+		std::cout << std::endl;
 	}
 }
 
