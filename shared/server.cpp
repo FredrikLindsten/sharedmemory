@@ -4,7 +4,6 @@
 #include <Windows.h>
 #include <thread>
 
-int gra = 256;
 
 Server::Server(int delay, int memorySize, int numMessages, bool random, int msgSizeIn){
 	totalMem = memorySize;
@@ -15,7 +14,7 @@ Server::Server(int delay, int memorySize, int numMessages, bool random, int msgS
 		(DWORD)0,
 		memorySize,
 		(LPCWSTR) "shared");
-	
+	sleepTime = delay;
 	msgRandSize = random;
 	msgSize = msgSizeIn;
 	msgMax = numMessages;
@@ -27,11 +26,25 @@ Server::Server(int delay, int memorySize, int numMessages, bool random, int msgS
 	mControl = help;
 	help += 101;
 	mData = (char*)help;
-
+	
 	*mControl = 0;
 
 	srand(0);
 	
+	
+	clientCount = 0;
+	bool foundClients = false;
+	while (foundClients == false){
+		clientCount++;
+		if (*(mControl+clientCount) == 1){
+			foundClients = true;
+			clientCount--;
+		}
+	}
+
+	if (clientCount == 0){
+		throw std::runtime_error("No clients found!:(");
+	}
 	MainLoop();
 }
 
@@ -44,12 +57,11 @@ void Server::gen_random(char *s, const int len) {
 	int* header = (int*)s;
 	header[0] = msgCount;
 	header[1] = len;
-
 	for (auto i = 8; i < len; ++i) {
 		s[i] = alphanum[rand() % (sizeof(alphanum)-1)];
-		std::cout << s[i];
 	}
 	s[len] = 0;
+	std::cout << msgCount << s+8 << std::endl;
 }
 
 int Server::FreeMemory(){
@@ -58,20 +70,18 @@ int Server::FreeMemory(){
 
 	size_t* help = new size_t[clientCount];
 	memcpy(help, mControl, (clientCount+1)*sizeof(size_t));
-
-	for (int i = 1; i < clientCount; i++){
-		if (mControl[i]<mControl[0])
-			help[i] += totalMem;
-	}
-
-	for (int i = 1; i < clientCount; i++){
-		if (help[i] < lastTail||i==1)
-			lastTail = help[i];
-	}
-	help[0] = totalMem;
-	free = lastTail - help[0];
 	
+	for (int i = 0; i < clientCount; i++){
+		if (mControl[i+1]<=mControl[0])
+			help[i+1] += totalMem;
+	}
 
+	for (int i = 0; i < clientCount; i++){
+		if (help[i+1] < lastTail || i == 0)
+			lastTail = help[i+1];
+	}
+	free = lastTail - *mControl;
+	
 	return free;
 }
 
@@ -80,12 +90,23 @@ bool Server::WriteMessage(char* data, int size){
 	if (size % gra != 0)
 		chunks++;
 	size = chunks*gra;
-	if (size > FreeMemory())
+
+	if ((size+gra) > FreeMemory())
 		return false;
+	int toEnd = totalMem - mControl[0];
+	if (size > toEnd){
+		memcpy(mData + *mControl, data, toEnd);
+		memcpy(mData, data + toEnd, size - toEnd);
+	}
+	else
+		memcpy(mData + *mControl, data, size);
+	
 
-	memcpy(mData, data, size);
-	*mControl;
+	*mControl += size;
+	if (*mControl > totalMem)
+		*mControl -= totalMem;
 
+	msgCount++;
 
 	return true;
 }
@@ -96,25 +117,18 @@ void Server::MainLoop(){
 	while (msgCount<msgMax){
 
 		//createdata
-		if (msgRandSize = true)
-			len = (rand() % msgSize);
+		if (msgRandSize == true)
+			len = (rand() % (msgSize-8))+8;
 		else
 			len = msgSize;
 		char *buff = new char[len];
 		gen_random((char*)buff, len);
 
 		run = WriteMessage(buff, len);
-		if (run = true){
-			msgCount++;
-			if (sleepTime > 1)
-				sleepTime--;
-		}
-		else{
-			sleepTime++;
-			std::this_thread::sleep_for(std::chrono::milliseconds(sleepTime));
-		}
-	}
 
+		std::this_thread::sleep_for(std::chrono::milliseconds(sleepTime));
+	}
+	int stop = 0;
 	return;
 }
 

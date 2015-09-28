@@ -15,7 +15,7 @@ void main(int argc, char* argv[]){
 		msgSize = atoi(argv[5]);
 
 	int memSize = atoi(argv[3])*(1 << 20);
-
+	memSize += sizeof(size_t) * 101;
 	if (strcmp(argv[1],"producer")==0){
 		Server* server = new Server(atoi(argv[2]), memSize, atoi(argv[4]), random, msgSize);
 	}

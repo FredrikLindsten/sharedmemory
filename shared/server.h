@@ -15,6 +15,7 @@ private:
 
 	int totalMem;
 
+	int gra = 256;
 	bool msgRandSize;
 	int msgSize;
 

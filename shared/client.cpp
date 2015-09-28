@@ -3,8 +3,12 @@
 #include <iostream>
 #include "mutex.h"
 #include "client.h"
+#include <thread>
+
 
 Client::Client(int delay, int memorySize, int numMessages, bool random, int msgSize){
+	totalMem = memorySize;
+	sleepTime = delay;
 	Mutex* mutex = new Mutex();
 	mutex->Lock();
 	hFileMap = CreateFileMapping(
@@ -26,7 +30,7 @@ Client::Client(int delay, int memorySize, int numMessages, bool random, int msgS
 		ownsMemory = false;
 	else{
 		ownsMemory = true;
-		std::fill(mControl, mControl + 101, 1);
+		std::fill(mControl + 1, mControl + 100, 1);
 	}
 
 	bool foundTail=false;
@@ -44,14 +48,42 @@ Client::Client(int delay, int memorySize, int numMessages, bool random, int msgS
 	MainLoop();
 }
 
+bool Client::ReadMessage(){
+	char* msg = mData + *mControl;
+	int* header = (int*)msg;
+	
+	int chunks = header[1] / gra;
+	if (header[1] % gra != 0)
+		chunks++;
+	int size = chunks*gra;
+
+	if (*mControl == *(mControl - clientId))
+		return false;
+	char* buff = new char[size];
+	int toEnd = totalMem - *mControl;
+	if (size > toEnd){
+		memcpy(buff, msg, toEnd);
+		memcpy(buff + toEnd, mData, size - toEnd);
+	}
+	else
+		memcpy(buff, mData + *mControl, size);
+
+
+	*mControl += size;
+	if (*mControl > totalMem)
+		*mControl -= totalMem;
+
+	msgsRead++;
+	std::cout << header[0] << buff+8 << std::endl;
+	return true;
+}
+
 void Client::MainLoop(){
-	int* header = (int*)mData;
-	std::cout << header[0] << " " << header[1] << " ";
+	bool run = true;
 	while(1){
 
-		for (auto i = 8; i < header[1]; i++)
-			std::cout << mData[i];
-		std::cout << std::endl;
+		run = ReadMessage();
+		std::this_thread::sleep_for(std::chrono::milliseconds(sleepTime));
 	}
 }
 
