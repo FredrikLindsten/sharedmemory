@@ -10,6 +10,7 @@ private:
 	int msgsRead;
 	int sleepTime;
 	int gra = 256;
+	int msgsMax;
 public:
 	Client(int delay, int memorySize, int numMessages, bool random, int msgSize);
 	~Client();

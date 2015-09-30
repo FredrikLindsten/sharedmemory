@@ -9,6 +9,7 @@
 Client::Client(int delay, int memorySize, int numMessages, bool random, int msgSize){
 	totalMem = memorySize;
 	sleepTime = delay;
+	msgsMax = numMessages;
 	Mutex* mutex = new Mutex();
 	mutex->Lock();
 	hFileMap = CreateFileMapping(
@@ -80,7 +81,7 @@ bool Client::ReadMessage(){
 
 void Client::MainLoop(){
 	bool run = true;
-	while(1){
+	while(msgsRead<msgsMax){
 
 		run = ReadMessage();
 		std::this_thread::sleep_for(std::chrono::milliseconds(sleepTime));
