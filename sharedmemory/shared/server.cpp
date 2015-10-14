@@ -18,7 +18,7 @@ Server::Server(int delay, int memorySize, int numMessages, bool random, int msgS
 	msgRandSize = random;
 	msgSize = msgSizeIn;
 	msgMax = numMessages;
-	if (random = true)
+	if (random == true)
 		msgSize = memorySize / 2;
 	size_t* help;
 	mData = (char*)MapViewOfFile(hFileMap, FILE_MAP_ALL_ACCESS, 0, 0, 0);
@@ -120,7 +120,7 @@ void Server::MainLoop(){
 		if (msgRandSize == true)
 			len = (rand() % (msgSize-8))+8;
 		else
-			len = msgSize;
+			len = msgSize+8;
 		char *buff = new char[len];
 		gen_random((char*)buff, len);
 
