@@ -34,7 +34,8 @@ struct MeshData
 {
 	MDagPath mesh_path;
 	MString name;
-	UINT id;
+	int id;
+	int matId = -1;
 
 	std::vector<vec3> points;
 	std::vector<vec3> normals;
@@ -43,5 +44,14 @@ struct MeshData
 };
 
 struct MeshHeader{
-	size_t id, nameLength, pointCount, normalCount, uvCount, faceCount;
+	size_t id, matid, nameLength, pointCount, normalCount, uvCount, faceCount;
+};
+
+struct Material
+{
+	// 0 = lambert, 1 = blinn, 2 = phong
+	int type = -1;
+	//	Color ambient, diffuse, specular, transparency, glow;
+	float r, g, b, a;
+	std::string texfile;
 };

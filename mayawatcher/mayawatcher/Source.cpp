@@ -4,17 +4,22 @@
 #include <iostream>
 #include "server.h"
 #include "structs.h"
+#include <vector>
 
 using namespace std;
 
 MCallbackId callbackId;
 MCallbackIdArray callbacks;
 MCallbackIdArray tempcallbacks;
+vector<Mesh*> meshes;
+vector<Material> materials;
 MStatus res = MS::kSuccess;
 MSpace::Space space = MSpace::kObject;
 Server* server;
 int index = 0;
 char* buffer = new char[1 << 20];
+
+
 
 void meshMoved(MNodeMessage::AttributeMessage p_Msg, MPlug &p_Plug, MPlug &p_Plug2, void *clientData)
 {
@@ -58,6 +63,46 @@ void nameChange(MObject &node, const MString &str, void *clientData){
 	int length = mesh->name().length();
 	memcpy(buffer + 12, mesh->name().asChar(), length);
 	server->WriteMessage(buffer, length + 12, MeshNameChange);
+}
+
+Material extractColor(MFnDependencyNode& fn)
+{
+	MPlug p;
+	Material mat;
+
+	p = fn.findPlug("aCR");
+	p.getValue(mat.r);
+	p = fn.findPlug("aCG");
+	p.getValue(mat.g);
+	p = fn.findPlug("aCB");
+	p.getValue(mat.b);
+	p = fn.findPlug("aCA");
+	p.getValue(mat.a);
+	p = fn.findPlug("aC");
+
+	MPlugArray connections;
+	p.connectedTo(connections, true, false);
+
+	for (int i = 0; i != connections.length(); ++i)
+	{
+		if (connections[i].node().apiType() == MFn::kFileTexture)
+		{
+			MFnDependencyNode fnDep(connections[i].node());
+			MPlug filename = fnDep.findPlug("ftn");
+			mat.texfile = filename.asString().asChar();
+			break;
+		}
+	}
+	return mat;
+}
+
+void updateMaterial(int id){
+	memcpy(buffer + 12, &id, 4);
+	memcpy(buffer + 16, &materials[id].r, 16);
+	int namelength = (int)materials[id].texfile.size();
+	memcpy(buffer + 32, &namelength, 4);
+	memcpy(buffer + 36, materials[id].texfile.data(), namelength);
+	server->WriteMessage(buffer, 36 + namelength, MaterialUpdate);
 }
 
 void meshCreated(float elapsedTime, float lastTime, void *clientData)
@@ -136,9 +181,50 @@ void meshCreated(float elapsedTime, float lastTime, void *clientData)
 			mesh_data.uvSets.push_back(tempUVSet);
 		}
 
+		MObjectArray shaders;
+		MObject shader;
+		MIntArray shaderindices;
+		Material material;
+		mesh->getConnectedShaders(0, shaders, shaderindices);
+		int t = shaders.length();
+		for (int i = 0; i < t; i++){
+			MPlugArray connections;
+			MFnDependencyNode shaderGroup(shaders[i]);
+			MPlug shaderPlug = shaderGroup.findPlug("surfaceShader");
+			shaderPlug.connectedTo(connections, true, false);
+			for (uint u = 0; u < connections.length(); u++)
+			{
+				shader = connections[u].node();
+				if (shader.hasFn(MFn::kPhong))
+				{
+					material.type = 2;
+					MFnPhongShader tempphong(shader);
+					material = extractColor(tempphong);
+				}
+				else if (shader.hasFn(MFn::kBlinn))
+				{
+					material.type = 1;
+					MFnBlinnShader tempblinn(shader);
+					material = extractColor(tempblinn);
+				}
+				else if (shader.hasFn(MFn::kLambert))
+				{
+					material.type = 0;
+					MFnLambertShader templamb(shader);
+					material = extractColor(templamb);
+				}
+			}
+		}
+
+		if (material.type >= 0){
+			materials.push_back(material);
+			updateMaterial((int)materials.size());
+			mesh_data.matId = (int)materials.size();
+		}
 
 		MeshHeader* header = (MeshHeader*)(buffer+12);
 		header->id = index;
+		header->matid = mesh_data.matId;
 		header->nameLength = mesh_data.name.length();
 		header->pointCount = mesh_data.points.size();
 		header->normalCount = mesh_data.normals.size();
@@ -168,6 +254,7 @@ void meshCreated(float elapsedTime, float lastTime, void *clientData)
 		newMesh->mesh = mesh;
 		newMesh->node = new MFnDagNode(mesh->parent(0));
 		newMesh->index = index;
+		meshes.push_back(newMesh);
 
 		index++;
 		MMessage::removeCallbacks(tempcallbacks);
@@ -175,9 +262,10 @@ void meshCreated(float elapsedTime, float lastTime, void *clientData)
 		callbacks.append(callbackId);
 		callbackId = MNodeMessage::addAttributeChangedCallback(*node, meshChanged, newMesh);
 		callbacks.append(callbackId);
+		callbackId = MNodeMessage::addAttributeChangedCallback(mesh->object(), meshChanged, newMesh);
+		callbacks.append(callbackId);
 		callbackId = MNodeMessage::addNameChangedCallback(mesh->parent(0), nameChange, newMesh->node);
 		callbacks.append(callbackId);
-
 	}
 }
 
@@ -185,7 +273,7 @@ void addednode(MObject &node, void *clientData){
 //	callbackId = MNodeMessage::addAttributeChangedCallback(node, meshCreated);
 	MObject *obj = new MObject;
 	*obj = node;
-	callbackId = MTimerMessage::addTimerCallback(0.1, (MTimerMessage::MElapsedTimeFunction) meshCreated, obj, &res);
+	callbackId = MTimerMessage::addTimerCallback((float)0.1, meshCreated, obj, &res);
 	tempcallbacks.append(callbackId);
 	return;
 }
@@ -210,7 +298,7 @@ EXPORT MStatus initializePlugin(MObject obj)
 
 	server = new Server(100);
 
-	//	callbackId = MTimerMessage::addTimerCallback(5, (MTimerMessage::MElapsedTimeFunction) timer, NULL, &res);
+	//	callbackId = MTimerMessage::addTimerCallback(5, timer, NULL, &res);
 	//	callbacks.append(callbackId);
 	callbackId = MDGMessage::addNodeAddedCallback(addednode, "mesh", server);
 	callbacks.append(callbackId);

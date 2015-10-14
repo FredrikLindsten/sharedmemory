@@ -1,7 +1,7 @@
 #pragma once
 #include <Windows.h>
 
-enum types{ NoNewMessages = -1, MessageToBig, NewMesh, MeshChange, MeshNameChange, MeshMoved };
+enum types{ NoNewMessages = -1, MessageToBig, NewMesh, MeshChange, MeshNameChange, MeshMoved, MaterialUpdate };
 
 struct MessageHeader{
 	int id, size;
